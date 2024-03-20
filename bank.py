@@ -4,6 +4,7 @@ import json
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 
+
 class Money:
 
     def __init__(self):
@@ -29,7 +30,7 @@ class Money:
         if not self.option and self.amount:
             return None
         with open(f"{script_directory}/data.txt", "a") as file:
-            file.write(self.to_dict() + "\n")
+            file.write("\n" + self.to_dict())
         print(f"{self.amount} added as {self.category} {self.option} in {self.date}")
     
     def to_dict(self):

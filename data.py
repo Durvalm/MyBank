@@ -20,7 +20,8 @@ class RetrieveData:
         choice_methods = {
             "1": self.get_all_spending_income,
             "2": self.get_last_months_income_spending,
-            "3": self.get_income_spending_per_month
+            "3": self.get_income_spending_per_month,
+            "4": self.get_income_spending_per_category,
         }
 
         selected_method = choice_methods.get(choice)
@@ -121,3 +122,19 @@ class RetrieveData:
                     + f"Income: ${v['income']} / Spending: ${v['spending']}"
                 )
             print(f"Total for {year} is ${value['total']}")
+
+    def get_income_spending_per_category(self):
+        categories_data = {"income": {}, "spending": {}}
+
+        with open(f"{script_directory}/{self.filename}") as f:
+            lines = f.readlines()
+            for l in lines:
+                data = json.loads(l)
+                category = data["category"]
+
+                if data["type"] in ["income", "spending"]:
+                    if category not in categories_data[data["type"]]:
+                        categories_data[data["type"]][category] = data["amount"]
+                    else:
+                        categories_data[data["type"]][category] += data["amount"]
+        print(categories_data)
