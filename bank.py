@@ -1,5 +1,6 @@
 import datetime
 import os
+import json
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -35,8 +36,11 @@ class Money:
         print(f"{self.amount} added as {self.category} {self.option} in {self.date}")
     
     def to_dict(self):
-        return str({"amount": self.amount, "type": self.option,
-                    "date": self.date, "category": self.category, "description": self.decription})
+        data = {"amount": self.amount, "type": self.option,
+                    "date": self.date.isoformat(), "category": self.category, "description": self.decription}
+        return json.dumps(data)
+
+
 
     def get_amount(self):
         try:
@@ -82,7 +86,7 @@ class Money:
         return categories
     
     def spending_categories(self):
-        categories = ["transportation", "groceries", "eating_out", "shopping", "app_subscriptions",
+        categories = ["transportation", "groceries", "eating_out", "travel", "shopping", "app_subscriptions",
                       "education", "utilities", "rent", "cellphone", "hobbies", "fitness", "other"]
         return categories
 
