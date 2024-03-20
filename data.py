@@ -9,6 +9,24 @@ class RetrieveData:
         self.filename = filename
 
 
+    def run(self):
+        print("\nWhat do you wanna see?")
+        print("1 - total spending/income")
+        print("2 - spending/income in last 1, 3, 6, or 12 months")
+        print("3 - spending/income table for every month")
+        print("4 - spending by category")
+
+        choice = input("-> ")
+        choice_methods = {
+            "1": self.get_all_spending_income,
+            "2": self.get_last_months_income_spending,
+            "3": self.get_income_spending_per_month
+        }
+
+        selected_method = choice_methods.get(choice)
+        selected_method()
+
+
     def get_all_spending_income(self):
         with open(f"{script_directory}/{self.filename}") as f:
             lines = f.readlines()
@@ -103,22 +121,3 @@ class RetrieveData:
                     + f"Income: ${v['income']} / Spending: ${v['spending']}"
                 )
             print(f"Total for {year} is ${value['total']}")
-
-
-print("\nWhat do you wanna see?")
-print("1 - total spending/income")
-print("2 - spending/income in last 1, 3, 6, or 12 months")
-print("3 - spending/income table for every month")
-print("4 - spending by category")
-
-choice = input("-> ")
-data = RetrieveData("data.txt")
-
-choice_methods = {
-    "1": data.get_all_spending_income,
-    "2": data.get_last_months_income_spending,
-    "3": data.get_income_spending_per_month
-}
-
-selected_method = choice_methods.get(choice)
-selected_method()

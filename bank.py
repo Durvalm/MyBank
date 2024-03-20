@@ -20,9 +20,6 @@ class Money:
         self.decription = self.get_description()
         self.date = datetime.date.today()
 
-        self.add()
-
-
     def introduce(self):
         print("\nWelcome to the Bank program")
         print("Enter the amount and select [income] or [spending]")
@@ -90,5 +87,3 @@ class Money:
                       "education", "utilities", "rent", "cellphone", "hobbies", "fitness", "other"]
         return categories
 
-
-money = Money()
