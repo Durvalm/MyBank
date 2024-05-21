@@ -84,7 +84,7 @@ class Money:
         return categories
     
     def spending_categories(self):
-        categories = ["transportation", "groceries", "eating_out", "travel", "shopping", "app_subscriptions",
+        categories = ["transportation", "personal_care", "groceries", "eating_out", "travel", "shopping", "app_subscriptions",
                       "education", "utilities", "rent", "cellphone", "hobbies", "fitness", "other"]
         return categories
 
