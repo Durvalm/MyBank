@@ -496,6 +496,8 @@ button:hover {
   border: 1px solid rgba(28, 27, 25, 0.2);
   color: var(--ink);
   font-size: 14px;
+  background: transparent;
+  cursor: pointer;
 }
 
 button.danger {

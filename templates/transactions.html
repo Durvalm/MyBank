@@ -56,7 +56,18 @@
       <div class="transaction-meta">
         <span class="date">{{ row.date }}</span>
         <div class="actions">
-          <a class="button-link" href="{{ url_for('edit_transaction', tx_id=row.id) }}">Edit</a>
+          <button
+            type="button"
+            class="button-link edit-button"
+            data-id="{{ row.id }}"
+            data-amount="{{ row.amount }}"
+            data-type="{{ row.type }}"
+            data-category="{{ row.category }}"
+            data-description="{{ row.description }}"
+            data-date="{{ row.date }}"
+          >
+            Edit
+          </button>
           <form method="post" action="{{ url_for('remove_transaction', tx_id=row.id) }}" onsubmit="return confirm('Delete this transaction?');">
             <button type="submit" class="danger">Delete</button>
           </form>
@@ -83,4 +94,102 @@
     {% endif %}
   </div>
 </section>
+
+<div class="modal" id="edit-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="true"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3>Edit transaction</h3>
+        <p class="muted">Update the entry and save changes.</p>
+      </div>
+      <button type="button" class="close" data-close="true">Close</button>
+    </div>
+    <div class="modal-body">
+      <form class="form" id="edit-form" method="post">
+        <label>
+          Amount
+          <input type="number" name="amount" step="0.01" min="0" required />
+        </label>
+
+        <div class="toggle">
+          <label>
+            <input type="radio" name="type" value="income" required />
+            <span>Income</span>
+          </label>
+          <label>
+            <input type="radio" name="type" value="spending" required />
+            <span>Spending</span>
+          </label>
+        </div>
+
+        <label>
+          Category
+          <select name="category" required>
+            <optgroup label="Income">
+              {% for category in income_categories %}
+                <option value="{{ category }}">{{ category.replace('_', ' ').title() }}</option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="Spending">
+              {% for category in spending_categories %}
+                <option value="{{ category }}">{{ category.replace('_', ' ').title() }}</option>
+              {% endfor %}
+            </optgroup>
+          </select>
+        </label>
+
+        <label>
+          Description
+          <input type="text" name="description" />
+        </label>
+
+        <label>
+          Date
+          <input type="date" name="date" />
+        </label>
+
+        <button type="submit">Save Changes</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const editModal = document.getElementById("edit-modal");
+  const editForm = document.getElementById("edit-form");
+
+  const openEditModal = (button) => {
+    const txId = button.dataset.id;
+    editForm.action = `/transactions/${txId}/edit`;
+    editForm.amount.value = button.dataset.amount;
+    editForm.description.value = button.dataset.description || "";
+    editForm.date.value = button.dataset.date || "";
+
+    const type = button.dataset.type;
+    editForm.querySelectorAll("input[name='type']").forEach((input) => {
+      input.checked = input.value === type;
+    });
+
+    const category = button.dataset.category;
+    editForm.category.value = category;
+
+    editModal.classList.add("open");
+    editModal.setAttribute("aria-hidden", "false");
+  };
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest(".edit-button");
+    if (target) {
+      event.preventDefault();
+      openEditModal(target);
+      return;
+    }
+
+    if (event.target.dataset.close === "true") {
+      editModal.classList.remove("open");
+      editModal.setAttribute("aria-hidden", "true");
+    }
+  });
+</script>
 {% endblock %}
