@@ -14,3 +14,7 @@ python app.py
 ```
 
 Open `http://127.0.0.1:5000` in your browser.
+
+### Auth
+
+Create an account at `/signup` and then log in at `/login`. The CLI now prompts for the same email/password.

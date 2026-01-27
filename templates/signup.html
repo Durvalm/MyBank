@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Get started</p>
+    <h1>Create your MyBank account.</h1>
+    <p class="subhead">Your data stays private and secure.</p>
+  </div>
+  <div class="hero-card">
+    <form class="form" action="{{ url_for('signup') }}" method="post">
+      <label>
+        Email
+        <input type="email" name="email" placeholder="you@email.com" required />
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" minlength="8" required />
+      </label>
+      <button type="submit">Create account</button>
+    </form>
+    <p class="muted">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+  </div>
+</section>
+{% endblock %}

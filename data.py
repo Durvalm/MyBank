@@ -3,6 +3,9 @@ from datetime import datetime
 from storage import get_db, init_db
 
 class RetrieveData:
+    def __init__(self, user_id):
+        self.user_id = user_id
+
     def run(self):
         print("\nWhat do you wanna see?")
         print("1 - total spending/income")
@@ -28,9 +31,10 @@ class RetrieveData:
                 """
                 SELECT amount, type, category, description, date
                 FROM transactions
+                WHERE user_id = ?
                 ORDER BY date ASC, id ASC
                 """
-            ).fetchall()
+            , (self.user_id,)).fetchall()
         return rows
 
 

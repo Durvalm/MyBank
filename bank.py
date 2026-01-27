@@ -5,7 +5,8 @@ from storage import INCOME_CATEGORIES, SPENDING_CATEGORIES, init_db, insert_tran
 
 class Money:
 
-    def __init__(self):
+    def __init__(self, user_id):
+        self.user_id = user_id
         self.introduce()
         self.amount = self.get_amount()
         if self.amount is None:
@@ -30,6 +31,7 @@ class Money:
         init_db()
         payload = self.to_payload()
         insert_transaction(
+            self.user_id,
             payload["amount"],
             payload["type"],
             payload["category"],
