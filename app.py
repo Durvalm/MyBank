@@ -1,7 +1,7 @@
 import datetime
 import os
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 
 from storage import (
     INCOME_CATEGORIES,
@@ -226,6 +226,52 @@ def stats():
         monthly_by_type=monthly_by_type,
         category_breakdown=category_breakdown,
     )
+
+
+@app.route("/transactions/filter")
+def transactions_filter():
+    month = (request.args.get("month") or "").strip()
+    tx_type = (request.args.get("type") or "").strip().lower()
+    category = (request.args.get("category") or "").strip().lower()
+
+    clauses = []
+    params = []
+    if month:
+        clauses.append("strftime('%Y-%m', date) = ?")
+        params.append(month)
+    if tx_type:
+        clauses.append("type = ?")
+        params.append(tx_type)
+    if category:
+        clauses.append("category = ?")
+        params.append(category)
+
+    where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+
+    with get_db() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT id, amount, type, category, description, date
+            FROM transactions
+            {where_clause}
+            ORDER BY date DESC, id DESC
+            """,
+            params,
+        ).fetchall()
+
+    payload = [
+        {
+            "id": row["id"],
+            "amount": row["amount"],
+            "type": row["type"],
+            "category": row["category"],
+            "description": row["description"],
+            "date": row["date"],
+        }
+        for row in rows
+    ]
+
+    return jsonify(payload)
 
 
 @app.route("/transactions")

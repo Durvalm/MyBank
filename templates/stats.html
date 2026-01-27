@@ -51,14 +51,24 @@
 
   {% if available_months %}
     <div class="totals monthly-totals">
-      <div class="total-card">
+      <button
+        type="button"
+        class="total-card clickable"
+        data-month="{{ selected_month }}"
+        data-type="income"
+      >
         <span>Income</span>
         <strong>${{ monthly_by_type.income|currency }}</strong>
-      </div>
-      <div class="total-card">
+      </button>
+      <button
+        type="button"
+        class="total-card clickable"
+        data-month="{{ selected_month }}"
+        data-type="spending"
+      >
         <span>Spending</span>
         <strong>${{ monthly_by_type.spending|currency }}</strong>
-      </div>
+      </button>
     </div>
 
     <div class="category-grid">
@@ -66,10 +76,16 @@
         <h3>Income by category</h3>
         <div class="category-list">
           {% for item in category_breakdown.income %}
-            <div class="category-row">
+            <button
+              type="button"
+              class="category-row clickable"
+              data-month="{{ selected_month }}"
+              data-type="income"
+              data-category="{{ item.category }}"
+            >
               <span>{{ item.category.replace('_', ' ').title() }}</span>
               <strong>${{ item.total|currency }}</strong>
-            </div>
+            </button>
           {% else %}
             <p class="muted">No income entries for this month.</p>
           {% endfor %}
@@ -79,10 +95,16 @@
         <h3>Spending by category</h3>
         <div class="category-list">
           {% for item in category_breakdown.spending %}
-            <div class="category-row">
+            <button
+              type="button"
+              class="category-row clickable"
+              data-month="{{ selected_month }}"
+              data-type="spending"
+              data-category="{{ item.category }}"
+            >
               <span>{{ item.category.replace('_', ' ').title() }}</span>
               <strong>${{ item.total|currency }}</strong>
-            </div>
+            </button>
           {% else %}
             <p class="muted">No spending entries for this month.</p>
           {% endfor %}
@@ -115,4 +137,94 @@
     {% endfor %}
   </div>
 </section>
+
+<div class="modal" id="tx-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="true"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3 id="modal-title">Transactions</h3>
+        <p id="modal-subtitle" class="muted"></p>
+      </div>
+      <button type="button" class="close" data-close="true">Close</button>
+    </div>
+    <div class="modal-body" id="modal-body">
+      <p class="muted">Loading...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById("tx-modal");
+  const modalBody = document.getElementById("modal-body");
+  const modalTitle = document.getElementById("modal-title");
+  const modalSubtitle = document.getElementById("modal-subtitle");
+
+  const formatCurrency = (value) => {
+    const num = Number(value || 0);
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const openModal = async (button) => {
+    const month = button.dataset.month || "";
+    const type = button.dataset.type || "";
+    const category = button.dataset.category || "";
+
+    modalBody.innerHTML = "<p class=\"muted\">Loading...</p>";
+    modalTitle.textContent = "Transactions";
+    modalSubtitle.textContent = [
+      month ? `Month: ${month}` : null,
+      type ? `Type: ${type}` : null,
+      category ? `Category: ${category.replace(/_/g, " ")}` : null,
+    ].filter(Boolean).join(" • ");
+
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+
+    const params = new URLSearchParams();
+    if (month) params.set("month", month);
+    if (type) params.set("type", type);
+    if (category) params.set("category", category);
+
+    let rows = [];
+    try {
+      const response = await fetch(`/transactions/filter?${params.toString()}`);
+      rows = await response.json();
+    } catch (error) {
+      modalBody.innerHTML = "<p class=\"muted\">Unable to load transactions.</p>";
+      return;
+    }
+
+    if (!rows.length) {
+      modalBody.innerHTML = "<p class=\"muted\">No transactions found.</p>";
+    } else {
+      modalBody.innerHTML = rows.map((row) => `
+        <div class="modal-row">
+          <div>
+            <span class="tag ${row.type}">${row.type}</span>
+            <strong>$${formatCurrency(row.amount)}</strong>
+            <span class="muted">${row.category.replace(/_/g, " ")}</span>
+          </div>
+          <div class="muted">${row.description}</div>
+          <div class="date">${row.date}</div>
+        </div>
+      `).join("");
+    }
+
+  };
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest(".clickable");
+    if (!button) return;
+    event.preventDefault();
+    openModal(button);
+  });
+
+  modal.addEventListener("click", (event) => {
+    if (event.target.dataset.close === "true") {
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    }
+  });
+</script>
 {% endblock %}
