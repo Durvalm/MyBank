@@ -39,6 +39,8 @@ class RetrieveData:
         spending = 0
         
         for l in lines:
+            if not l.strip():  # Skip empty lines
+                continue
             data = json.loads(l)
             if data["type"] == "income":
                 income += data["amount"]
@@ -59,17 +61,19 @@ class RetrieveData:
 
         lines = self.get_data()
         for l in lines:
+            if not l.strip():
+                continue
             data = json.loads(l)
             dt_obj = datetime.strptime(data["date"], "%Y-%m-%d")
-            diff = datetime.now() - dt_obj
+            diff = (datetime.now() - dt_obj).days
 
-            if diff.days > 360:
-                break
-
-            for period in last_months_data.keys():
-                if diff.days < int(period):
+            # Don't break early
+            for period in last_months_data:
+                if diff <= int(period):  # <= for inclusive logic
                     last_months_data[period][data["type"]] += data["amount"]
+        
         self.display_last_months_income_spending(last_months_data)
+
 
 
     def display_last_months_income_spending(self, data):
@@ -86,6 +90,8 @@ class RetrieveData:
         lines = self.get_data()
 
         for l in lines:
+            if not l.strip():  # Skip empty lines
+                continue
             data = json.loads(l)
             self.populate_calendar(calendar_data, data)
         # self.display_income_spending_yearly()
@@ -145,7 +151,7 @@ class RetrieveData:
                 print(f"\nMonth {month}")
                 for typ, categories in amount_type.items():
                     print(typ)
-                    print(categories)
+                    print(sorted(categories.items(), key=lambda kv: (kv[1], kv[0]), reverse=True))
 
 
                 
@@ -153,6 +159,8 @@ class RetrieveData:
         calendar_data = {}
         lines = self.get_data()
         for l in lines:
+            if not l.strip():  # Skip empty lines
+                continue
             data = json.loads(l)
             self.populate_calendar(calendar_data, data, includes_categories=True)
         self.display_income_spending_per_category(calendar_data)
