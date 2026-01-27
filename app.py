@@ -3,7 +3,18 @@ import os
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 
-from storage import INCOME_CATEGORIES, SPENDING_CATEGORIES, get_db, init_db, insert_transaction
+from storage import (
+    INCOME_CATEGORIES,
+    SPENDING_CATEGORIES,
+    count_transactions,
+    delete_transaction,
+    fetch_transaction,
+    get_db,
+    init_db,
+    insert_transaction,
+    query_transactions,
+    update_transaction,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("MYBANK_SECRET", "dev-secret")
@@ -33,6 +44,42 @@ def parse_amount(raw):
         return None
 
 
+def normalize_transaction(form):
+    amount = parse_amount(form.get("amount"))
+    tx_type = (form.get("type") or "").lower()
+    category = (form.get("category") or "").lower()
+    description = form.get("description") or ""
+    date = form.get("date") or datetime.date.today().isoformat()
+
+    if amount is None or amount <= 0:
+        return None, "Amount must be a positive number."
+
+    if tx_type not in ("income", "spending"):
+        return None, "Type must be income or spending."
+
+    if not valid_category(tx_type, category):
+        return None, "Please pick a valid category."
+
+    if not description.strip():
+        description = "(no description)"
+
+    return {
+        "amount": amount,
+        "type": tx_type,
+        "category": category,
+        "description": description,
+        "date": date,
+    }, None
+
+
+@app.template_filter("currency")
+def currency_filter(value):
+    try:
+        return f"{float(value):,.2f}"
+    except (TypeError, ValueError):
+        return "0.00"
+
+
 @app.route("/")
 def index():
     today = datetime.date.today().isoformat()
@@ -46,28 +93,18 @@ def index():
 
 @app.route("/add", methods=["POST"])
 def add():
-    amount = parse_amount(request.form.get("amount"))
-    tx_type = (request.form.get("type") or "").lower()
-    category = (request.form.get("category") or "").lower()
-    description = request.form.get("description") or ""
-    date = request.form.get("date") or datetime.date.today().isoformat()
-
-    if amount is None or amount <= 0:
-        flash("Amount must be a positive number.")
+    payload, error = normalize_transaction(request.form)
+    if error:
+        flash(error)
         return redirect(url_for("index"))
 
-    if tx_type not in ("income", "spending"):
-        flash("Type must be income or spending.")
-        return redirect(url_for("index"))
-
-    if not valid_category(tx_type, category):
-        flash("Please pick a valid category.")
-        return redirect(url_for("index"))
-
-    if not description.strip():
-        description = "(no description)"
-
-    insert_transaction(amount, tx_type, category, description, date)
+    insert_transaction(
+        payload["amount"],
+        payload["type"],
+        payload["category"],
+        payload["description"],
+        payload["date"],
+    )
 
     flash("Transaction added.")
     return redirect(url_for("index"))
@@ -92,6 +129,7 @@ def totals_for_period(conn, start_date):
 
 @app.route("/stats")
 def stats():
+    month_param = request.args.get("month")
     with get_db() as conn:
         all_time = totals_for_period(conn, "0000-01-01")
 
@@ -106,16 +144,132 @@ def stats():
             SELECT amount, type, category, description, date
             FROM transactions
             ORDER BY date DESC, id DESC
-            LIMIT 20
+            LIMIT 5
             """
         ).fetchall()
+
+        month_rows = conn.execute(
+            """
+            SELECT strftime('%Y-%m', date) AS month
+            FROM transactions
+            GROUP BY month
+            ORDER BY month DESC
+            """
+        ).fetchall()
+
+        available_months = [row["month"] for row in month_rows]
+        if month_param in available_months:
+            selected_month = month_param
+        else:
+            selected_month = available_months[0] if available_months else datetime.date.today().strftime("%Y-%m")
+
+        monthly_totals = conn.execute(
+            """
+            SELECT type, COALESCE(SUM(amount), 0) AS total
+            FROM transactions
+            WHERE strftime('%Y-%m', date) = ?
+            GROUP BY type
+            """,
+            (selected_month,),
+        ).fetchall()
+
+        monthly_by_type = {"income": 0, "spending": 0}
+        for row in monthly_totals:
+            monthly_by_type[row["type"]] = round(row["total"], 2)
+
+        category_rows = conn.execute(
+            """
+            SELECT category, type, COALESCE(SUM(amount), 0) AS total
+            FROM transactions
+            WHERE strftime('%Y-%m', date) = ?
+            GROUP BY type, category
+            ORDER BY type ASC, total DESC
+            """,
+            (selected_month,),
+        ).fetchall()
+
+        category_breakdown = {"income": [], "spending": []}
+        for row in category_rows:
+            category_breakdown[row["type"]].append(
+                {"category": row["category"], "total": round(row["total"], 2)}
+            )
 
     return render_template(
         "stats.html",
         all_time=all_time,
         periods=periods,
         recent=recent,
+        available_months=available_months,
+        selected_month=selected_month,
+        monthly_by_type=monthly_by_type,
+        category_breakdown=category_breakdown,
     )
+
+
+@app.route("/transactions")
+def transactions():
+    query = (request.args.get("q") or "").strip()
+    page = request.args.get("page", "1")
+    try:
+        page = max(int(page), 1)
+    except ValueError:
+        page = 1
+
+    page_size = 20
+    total = count_transactions(query if query else None)
+    total_pages = max((total + page_size - 1) // page_size, 1)
+    if page > total_pages:
+        page = total_pages
+
+    rows = query_transactions(query if query else None, limit=page_size, offset=(page - 1) * page_size)
+
+    return render_template(
+        "transactions.html",
+        rows=rows,
+        query=query,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+    )
+
+
+@app.route("/transactions/<int:tx_id>/edit", methods=["GET", "POST"])
+def edit_transaction(tx_id):
+    tx = fetch_transaction(tx_id)
+    if not tx:
+        flash("Transaction not found.")
+        return redirect(url_for("transactions"))
+
+    if request.method == "POST":
+        payload, error = normalize_transaction(request.form)
+        if error:
+            flash(error)
+            return redirect(url_for("edit_transaction", tx_id=tx_id))
+
+        update_transaction(
+            tx_id,
+            payload["amount"],
+            payload["type"],
+            payload["category"],
+            payload["description"],
+            payload["date"],
+        )
+        flash("Transaction updated.")
+        return redirect(url_for("transactions"))
+
+    return render_template(
+        "edit.html",
+        tx=tx,
+        income_categories=INCOME_CATEGORIES,
+        spending_categories=SPENDING_CATEGORIES,
+    )
+
+
+@app.route("/transactions/<int:tx_id>/delete", methods=["POST"])
+def remove_transaction(tx_id):
+    delete_transaction(tx_id)
+    flash("Transaction deleted.")
+    return redirect(url_for("transactions"))
 
 
 if __name__ == "__main__":

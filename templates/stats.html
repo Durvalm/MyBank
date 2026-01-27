@@ -10,11 +10,11 @@
   <div class="totals">
     <div class="total-card">
       <span>All-time income</span>
-      <strong>${{ '%.2f'|format(all_time.income) }}</strong>
+      <strong>${{ all_time.income|currency }}</strong>
     </div>
     <div class="total-card">
       <span>All-time spending</span>
-      <strong>${{ '%.2f'|format(all_time.spending) }}</strong>
+      <strong>${{ all_time.spending|currency }}</strong>
     </div>
   </div>
 </section>
@@ -24,24 +24,87 @@
     <div class="period-card">
       <h3>Last {{ item.days // 30 }} months</h3>
       <div class="period-values">
-        <span>Income: ${{ '%.2f'|format(item.totals.income) }}</span>
-        <span>Spending: ${{ '%.2f'|format(item.totals.spending) }}</span>
+        <span>Income: ${{ item.totals.income|currency }}</span>
+        <span>Spending: ${{ item.totals.spending|currency }}</span>
       </div>
     </div>
   {% endfor %}
 </section>
 
+<section class="monthly">
+  <div class="section-header">
+    <div>
+      <h2>Monthly snapshot</h2>
+      <p class="muted">Income, spending, and category totals for a selected month.</p>
+    </div>
+    <form method="get" action="{{ url_for('stats') }}" class="month-picker">
+      <label>
+        Month
+        <select name="month" onchange="this.form.submit()">
+          {% for month in available_months %}
+            <option value="{{ month }}" {% if month == selected_month %}selected{% endif %}>{{ month }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+  </div>
+
+  {% if available_months %}
+    <div class="totals monthly-totals">
+      <div class="total-card">
+        <span>Income</span>
+        <strong>${{ monthly_by_type.income|currency }}</strong>
+      </div>
+      <div class="total-card">
+        <span>Spending</span>
+        <strong>${{ monthly_by_type.spending|currency }}</strong>
+      </div>
+    </div>
+
+    <div class="category-grid">
+      <div class="category-card">
+        <h3>Income by category</h3>
+        <div class="category-list">
+          {% for item in category_breakdown.income %}
+            <div class="category-row">
+              <span>{{ item.category.replace('_', ' ').title() }}</span>
+              <strong>${{ item.total|currency }}</strong>
+            </div>
+          {% else %}
+            <p class="muted">No income entries for this month.</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="category-card">
+        <h3>Spending by category</h3>
+        <div class="category-list">
+          {% for item in category_breakdown.spending %}
+            <div class="category-row">
+              <span>{{ item.category.replace('_', ' ').title() }}</span>
+              <strong>${{ item.total|currency }}</strong>
+            </div>
+          {% else %}
+            <p class="muted">No spending entries for this month.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No monthly data yet.</p>
+  {% endif %}
+</section>
+
 <section class="recent">
   <div class="recent-header">
     <h2>Recent transactions</h2>
-    <p>Showing the latest 20 entries.</p>
+    <p>Showing the latest 5 entries. <a href="{{ url_for('transactions') }}">View all</a></p>
   </div>
   <div class="recent-list">
     {% for row in recent %}
       <div class="recent-item">
         <div>
           <span class="tag {{ row.type }}">{{ row.type }}</span>
-          <strong>${{ '%.2f'|format(row.amount) }}</strong>
+          <strong>${{ row.amount|currency }}</strong>
           <span class="muted">{{ row.category.replace('_', ' ').title() }}</span>
         </div>
         <div class="muted">{{ row.description }}</div>

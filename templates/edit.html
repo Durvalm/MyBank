@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Edit</p>
+    <h1>Update transaction.</h1>
+    <p class="subhead">Make changes and save to update your records.</p>
+  </div>
+  <div class="hero-card">
+    <form class="form" action="{{ url_for('edit_transaction', tx_id=tx.id) }}" method="post">
+      <label>
+        Amount
+        <input type="number" name="amount" step="0.01" min="0" value="{{ tx.amount }}" required />
+      </label>
+
+      <div class="toggle">
+        <label>
+          <input type="radio" name="type" value="income" {% if tx.type == 'income' %}checked{% endif %} required />
+          <span>Income</span>
+        </label>
+        <label>
+          <input type="radio" name="type" value="spending" {% if tx.type == 'spending' %}checked{% endif %} required />
+          <span>Spending</span>
+        </label>
+      </div>
+
+      <label>
+        Category
+        <select name="category" required>
+          <optgroup label="Income">
+            {% for category in income_categories %}
+              <option value="{{ category }}" {% if tx.category == category %}selected{% endif %}>{{ category.replace('_', ' ').title() }}</option>
+            {% endfor %}
+          </optgroup>
+          <optgroup label="Spending">
+            {% for category in spending_categories %}
+              <option value="{{ category }}" {% if tx.category == category %}selected{% endif %}>{{ category.replace('_', ' ').title() }}</option>
+            {% endfor %}
+          </optgroup>
+        </select>
+      </label>
+
+      <label>
+        Description
+        <input type="text" name="description" value="{{ tx.description }}" />
+      </label>
+
+      <label>
+        Date
+        <input type="date" name="date" value="{{ tx.date }}" />
+      </label>
+
+      <button type="submit">Save Changes</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

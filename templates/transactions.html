@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="transactions-header">
+  <div>
+    <p class="eyebrow">Transactions</p>
+    <h1>Browse and manage entries.</h1>
+    <p class="subhead">Search, edit, or delete any transaction.</p>
+  </div>
+  <form class="search-form" method="get" action="{{ url_for('transactions') }}">
+    <input type="text" name="q" placeholder="Search description, category, type, date..." value="{{ query }}" />
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<section class="transactions-list">
+  <div class="list-header">
+    <span>{{ total }} result{% if total != 1 %}s{% endif %}</span>
+    <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+  </div>
+
+  {% for row in rows %}
+    <div class="transaction-row">
+      <div>
+        <span class="tag {{ row.type }}">{{ row.type }}</span>
+        <strong>${{ row.amount|currency }}</strong>
+        <span class="muted">{{ row.category.replace('_', ' ').title() }}</span>
+      </div>
+      <div class="muted">{{ row.description }}</div>
+      <div class="transaction-meta">
+        <span class="date">{{ row.date }}</span>
+        <div class="actions">
+          <a class="button-link" href="{{ url_for('edit_transaction', tx_id=row.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('remove_transaction', tx_id=row.id) }}" onsubmit="return confirm('Delete this transaction?');">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No transactions found.</p>
+  {% endfor %}
+
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="{{ url_for('transactions', q=query, page=page-1) }}">Previous</a>
+    {% endif %}
+    {% if page < total_pages %}
+      <a href="{{ url_for('transactions', q=query, page=page+1) }}">Next</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
