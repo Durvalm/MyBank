@@ -1,19 +1,9 @@
 import datetime
-import json
 import os
-import shutil
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 
-from storage import (
-    DATA_TXT_PATH,
-    INCOME_CATEGORIES,
-    SPENDING_CATEGORIES,
-    ensure_seeded_from_txt,
-    get_db,
-    init_db,
-    insert_transaction,
-)
+from storage import INCOME_CATEGORIES, SPENDING_CATEGORIES, get_db, init_db, insert_transaction
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("MYBANK_SECRET", "dev-secret")
@@ -25,7 +15,6 @@ def setup_db_once():
     global _db_initialized
     if not _db_initialized:
         init_db()
-        ensure_seeded_from_txt()
         _db_initialized = True
 
 
@@ -127,35 +116,6 @@ def stats():
         periods=periods,
         recent=recent,
     )
-
-
-@app.route("/export")
-def export_data():
-    with get_db() as conn:
-        rows = conn.execute(
-            """
-            SELECT amount, type, category, description, date
-            FROM transactions
-            ORDER BY date ASC, id ASC
-            """
-        ).fetchall()
-
-    if os.path.exists(DATA_TXT_PATH):
-        shutil.copyfile(DATA_TXT_PATH, DATA_TXT_PATH + ".bak")
-
-    with open(DATA_TXT_PATH, "w") as file:
-        for row in rows:
-            payload = {
-                "amount": row["amount"],
-                "type": row["type"],
-                "date": row["date"],
-                "category": row["category"],
-                "description": row["description"],
-            }
-            file.write(json.dumps(payload) + "\n")
-
-    flash("Exported backup to data.txt (previous file saved as data.txt.bak).")
-    return redirect(url_for("stats"))
 
 
 if __name__ == "__main__":

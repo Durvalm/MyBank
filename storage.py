@@ -1,10 +1,8 @@
-import json
 import os
 import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "mybank.db")
-DATA_TXT_PATH = os.path.join(BASE_DIR, "data.txt")
 
 INCOME_CATEGORIES = ["work", "financial_aid", "family", "sell", "other"]
 SPENDING_CATEGORIES = [
@@ -57,48 +55,3 @@ def insert_transaction(amount, tx_type, category, description, date):
             """,
             (amount, tx_type, category, description, date),
         )
-
-
-def append_to_backup(payload):
-    with open(DATA_TXT_PATH, "a") as file:
-        file.write(json.dumps(payload) + "\n")
-
-
-def ensure_seeded_from_txt():
-    if not os.path.exists(DATA_TXT_PATH):
-        return
-
-    with get_db() as conn:
-        row = conn.execute("SELECT COUNT(*) AS total FROM transactions").fetchone()
-        if row and row["total"] > 0:
-            return
-
-        with open(DATA_TXT_PATH) as file:
-            lines = file.readlines()
-
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                data = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            if not all(key in data for key in ("amount", "type", "category", "description", "date")):
-                continue
-
-            conn.execute(
-                """
-                INSERT INTO transactions (amount, type, category, description, date)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    float(data["amount"]),
-                    data["type"],
-                    data["category"],
-                    data["description"],
-                    data["date"],
-                ),
-            )
-
-        conn.commit()

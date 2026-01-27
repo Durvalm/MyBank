@@ -164,7 +164,6 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-data.txt
 mybank.db
 
 # PyCharm

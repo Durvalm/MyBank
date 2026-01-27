@@ -1,12 +1,8 @@
 from datetime import datetime
 
-from storage import ensure_seeded_from_txt, get_db, init_db
+from storage import get_db, init_db
 
 class RetrieveData:
-    def __init__(self, filename):
-        self.filename = filename
-
-
     def run(self):
         print("\nWhat do you wanna see?")
         print("1 - total spending/income")
@@ -27,7 +23,6 @@ class RetrieveData:
 
     def get_data(self):
         init_db()
-        ensure_seeded_from_txt()
         with get_db() as conn:
             rows = conn.execute(
                 """
@@ -140,7 +135,6 @@ class RetrieveData:
                 )
     
     def display_income_spending_per_category(self, calendar_data):
-        print(calendar_data)
         for year, months in calendar_data.items():
             print("\n")
             print(year)

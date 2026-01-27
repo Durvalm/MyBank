@@ -1,14 +1,6 @@
 import datetime
-import json
 
-from storage import (
-    INCOME_CATEGORIES,
-    SPENDING_CATEGORIES,
-    append_to_backup,
-    ensure_seeded_from_txt,
-    init_db,
-    insert_transaction,
-)
+from storage import INCOME_CATEGORIES, SPENDING_CATEGORIES, init_db, insert_transaction
 
 
 class Money:
@@ -24,7 +16,7 @@ class Money:
         self.category = self.get_category()
         if self.category is None:
             return None
-        self.decription = self.get_description()
+        self.description = self.get_description()
         self.date = datetime.date.today()
 
     def introduce(self):
@@ -36,8 +28,7 @@ class Money:
         if not self.option and self.amount:
             return None
         init_db()
-        ensure_seeded_from_txt()
-        payload = json.loads(self.to_dict())
+        payload = self.to_payload()
         insert_transaction(
             payload["amount"],
             payload["type"],
@@ -45,13 +36,16 @@ class Money:
             payload["description"],
             payload["date"],
         )
-        append_to_backup(payload)
         print(f"{self.amount} added as {self.category} {self.option} in {self.date}")
     
-    def to_dict(self):
-        data = {"amount": self.amount, "type": self.option,
-                    "date": self.date.isoformat(), "category": self.category, "description": self.decription}
-        return json.dumps(data)
+    def to_payload(self):
+        return {
+            "amount": self.amount,
+            "type": self.option,
+            "date": self.date.isoformat(),
+            "category": self.category,
+            "description": self.description,
+        }
 
 
 
