@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="stats-hero">
+  <div>
+    <p class="eyebrow">Overview</p>
+    <h1>Money at a glance.</h1>
+    <p class="subhead">Totals and recent activity pulled straight from your live database.</p>
+  </div>
+  <div class="totals">
+    <div class="total-card">
+      <span>All-time income</span>
+      <strong>${{ '%.2f'|format(all_time.income) }}</strong>
+    </div>
+    <div class="total-card">
+      <span>All-time spending</span>
+      <strong>${{ '%.2f'|format(all_time.spending) }}</strong>
+    </div>
+  </div>
+</section>
+
+<section class="periods">
+  {% for item in periods %}
+    <div class="period-card">
+      <h3>Last {{ item.days // 30 }} months</h3>
+      <div class="period-values">
+        <span>Income: ${{ '%.2f'|format(item.totals.income) }}</span>
+        <span>Spending: ${{ '%.2f'|format(item.totals.spending) }}</span>
+      </div>
+    </div>
+  {% endfor %}
+</section>
+
+<section class="recent">
+  <div class="recent-header">
+    <h2>Recent transactions</h2>
+    <p>Showing the latest 20 entries.</p>
+  </div>
+  <div class="recent-list">
+    {% for row in recent %}
+      <div class="recent-item">
+        <div>
+          <span class="tag {{ row.type }}">{{ row.type }}</span>
+          <strong>${{ '%.2f'|format(row.amount) }}</strong>
+          <span class="muted">{{ row.category.replace('_', ' ').title() }}</span>
+        </div>
+        <div class="muted">{{ row.description }}</div>
+        <div class="date">{{ row.date }}</div>
+      </div>
+    {% else %}
+      <p class="muted">No transactions yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

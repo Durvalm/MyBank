@@ -1,8 +1,14 @@
 import datetime
-import os
 import json
 
-script_directory = os.path.dirname(os.path.realpath(__file__))
+from storage import (
+    INCOME_CATEGORIES,
+    SPENDING_CATEGORIES,
+    append_to_backup,
+    ensure_seeded_from_txt,
+    init_db,
+    insert_transaction,
+)
 
 
 class Money:
@@ -29,8 +35,17 @@ class Money:
     def add(self):
         if not self.option and self.amount:
             return None
-        with open(f"{script_directory}/data.txt", "a") as file:
-            file.write("\n" + self.to_dict())
+        init_db()
+        ensure_seeded_from_txt()
+        payload = json.loads(self.to_dict())
+        insert_transaction(
+            payload["amount"],
+            payload["type"],
+            payload["category"],
+            payload["description"],
+            payload["date"],
+        )
+        append_to_backup(payload)
         print(f"{self.amount} added as {self.category} {self.option} in {self.date}")
     
     def to_dict(self):
@@ -80,11 +95,7 @@ class Money:
 
 
     def income_categories(self):
-        categories = ["work", "financial_aid", "family", "sell", "other"]
-        return categories
+        return INCOME_CATEGORIES
     
     def spending_categories(self):
-        categories = ["transportation", "personal_care", "groceries", "eating_out", "travel", "shopping", "app_subscriptions",
-                      "education", "utilities", "rent", "cellphone", "hobbies", "fitness", "medical", "other"]
-        return categories
-
+        return SPENDING_CATEGORIES

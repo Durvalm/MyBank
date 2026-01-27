@@ -1,8 +1,6 @@
 from datetime import datetime
-import os
-import json
 
-script_directory = os.path.dirname(os.path.realpath(__file__))
+from storage import ensure_seeded_from_txt, get_db, init_db
 
 class RetrieveData:
     def __init__(self, filename):
@@ -28,9 +26,17 @@ class RetrieveData:
         selected_method()
 
     def get_data(self):
-        with open(f"{script_directory}/{self.filename}") as f:
-            data = f.readlines()
-        return data
+        init_db()
+        ensure_seeded_from_txt()
+        with get_db() as conn:
+            rows = conn.execute(
+                """
+                SELECT amount, type, category, description, date
+                FROM transactions
+                ORDER BY date ASC, id ASC
+                """
+            ).fetchall()
+        return rows
 
 
     def get_all_spending_income(self):
@@ -39,13 +45,10 @@ class RetrieveData:
         spending = 0
         
         for l in lines:
-            if not l.strip():  # Skip empty lines
-                continue
-            data = json.loads(l)
-            if data["type"] == "income":
-                income += data["amount"]
-            elif data["type"] == "spending":
-                spending += data["amount"]
+            if l["type"] == "income":
+                income += l["amount"]
+            elif l["type"] == "spending":
+                spending += l["amount"]
 
         print(f"You earned a total of ${income}")
         print(f"And spent a total of ${spending}")
@@ -61,16 +64,13 @@ class RetrieveData:
 
         lines = self.get_data()
         for l in lines:
-            if not l.strip():
-                continue
-            data = json.loads(l)
-            dt_obj = datetime.strptime(data["date"], "%Y-%m-%d")
+            dt_obj = datetime.strptime(l["date"], "%Y-%m-%d")
             diff = (datetime.now() - dt_obj).days
 
             # Don't break early
             for period in last_months_data:
                 if diff <= int(period):  # <= for inclusive logic
-                    last_months_data[period][data["type"]] += data["amount"]
+                    last_months_data[period][l["type"]] += l["amount"]
         
         self.display_last_months_income_spending(last_months_data)
 
@@ -90,10 +90,7 @@ class RetrieveData:
         lines = self.get_data()
 
         for l in lines:
-            if not l.strip():  # Skip empty lines
-                continue
-            data = json.loads(l)
-            self.populate_calendar(calendar_data, data)
+            self.populate_calendar(calendar_data, l)
         # self.display_income_spending_yearly()
         self.display_income_spending_year_month(calendar_data)
     
@@ -159,8 +156,5 @@ class RetrieveData:
         calendar_data = {}
         lines = self.get_data()
         for l in lines:
-            if not l.strip():  # Skip empty lines
-                continue
-            data = json.loads(l)
-            self.populate_calendar(calendar_data, data, includes_categories=True)
+            self.populate_calendar(calendar_data, l, includes_categories=True)
         self.display_income_spending_per_category(calendar_data)

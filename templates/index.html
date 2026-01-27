@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Quick Entry</p>
+    <h1>Log money in seconds.</h1>
+    <p class="subhead">Single form, mobile-friendly, and always consistent with your categories.</p>
+  </div>
+  <div class="hero-card">
+    <form class="form" action="{{ url_for('add') }}" method="post">
+      <label>
+        Amount
+        <input type="number" name="amount" step="0.01" min="0" placeholder="0.00" required />
+      </label>
+
+      <div class="toggle">
+        <label>
+          <input type="radio" name="type" value="income" required />
+          <span>Income</span>
+        </label>
+        <label>
+          <input type="radio" name="type" value="spending" required />
+          <span>Spending</span>
+        </label>
+      </div>
+
+      <label>
+        Category
+        <select name="category" required>
+          <optgroup label="Income">
+            {% for category in income_categories %}
+              <option value="{{ category }}">{{ category.replace('_', ' ').title() }}</option>
+            {% endfor %}
+          </optgroup>
+          <optgroup label="Spending">
+            {% for category in spending_categories %}
+              <option value="{{ category }}">{{ category.replace('_', ' ').title() }}</option>
+            {% endfor %}
+          </optgroup>
+        </select>
+      </label>
+
+      <label>
+        Description
+        <input type="text" name="description" placeholder="Optional details" />
+      </label>
+
+      <label>
+        Date
+        <input type="date" name="date" value="{{ today }}" />
+      </label>
+
+      <button type="submit">Add Transaction</button>
+    </form>
+  </div>
+</section>
+
+<section class="info-grid">
+  <div class="info-card">
+    <h3>Reliable backup</h3>
+    <p>Export any time to update your local <code>data.txt</code> file with a single tap.</p>
+  </div>
+  <div class="info-card">
+    <h3>Structured categories</h3>
+    <p>Exact same categories from the CLI, so stats always line up.</p>
+  </div>
+  <div class="info-card">
+    <h3>Mobile-first</h3>
+    <p>Clean, responsive form that works great on your phone.</p>
+  </div>
+</section>
+{% endblock %}
