@@ -89,13 +89,21 @@ def delete_transaction(tx_id):
         )
 
 
-def count_transactions(search_query=None):
-    clause = ""
+def count_transactions(search_query=None, category=None, tx_type=None):
+    clauses = []
     params = []
     if search_query:
-        clause = "WHERE description LIKE ? OR category LIKE ? OR type LIKE ? OR date LIKE ?"
+        clauses.append("(description LIKE ? OR category LIKE ? OR type LIKE ? OR date LIKE ?)")
         token = f"%{search_query}%"
-        params = [token, token, token, token]
+        params.extend([token, token, token, token])
+    if category:
+        clauses.append("category = ?")
+        params.append(category)
+    if tx_type:
+        clauses.append("type = ?")
+        params.append(tx_type)
+
+    clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 
     with get_db() as conn:
         row = conn.execute(
@@ -105,14 +113,21 @@ def count_transactions(search_query=None):
     return row["total"] if row else 0
 
 
-def query_transactions(search_query=None, limit=20, offset=0):
-    clause = ""
+def query_transactions(search_query=None, category=None, tx_type=None, limit=20, offset=0):
+    clauses = []
     params = []
     if search_query:
-        clause = "WHERE description LIKE ? OR category LIKE ? OR type LIKE ? OR date LIKE ?"
+        clauses.append("(description LIKE ? OR category LIKE ? OR type LIKE ? OR date LIKE ?)")
         token = f"%{search_query}%"
-        params = [token, token, token, token]
+        params.extend([token, token, token, token])
+    if category:
+        clauses.append("category = ?")
+        params.append(category)
+    if tx_type:
+        clauses.append("type = ?")
+        params.append(tx_type)
 
+    clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     params.extend([limit, offset])
     with get_db() as conn:
         return conn.execute(

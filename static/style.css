@@ -294,6 +294,12 @@ button:hover {
   align-content: start;
 }
 
+.filters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
 .transactions-list {
   display: grid;
   gap: 16px;
@@ -345,6 +351,8 @@ button.danger {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .pagination a {
@@ -353,6 +361,16 @@ button.danger {
   padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid rgba(28, 27, 25, 0.2);
+}
+
+.pagination a.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.pagination .ellipsis {
+  color: var(--muted);
 }
 
 .tag {

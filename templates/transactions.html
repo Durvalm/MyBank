@@ -9,6 +9,32 @@
   </div>
   <form class="search-form" method="get" action="{{ url_for('transactions') }}">
     <input type="text" name="q" placeholder="Search description, category, type, date..." value="{{ query }}" />
+    <div class="filters">
+      <label>
+        Type
+        <select name="type">
+          <option value="">All</option>
+          <option value="income" {% if selected_type == 'income' %}selected{% endif %}>Income</option>
+          <option value="spending" {% if selected_type == 'spending' %}selected{% endif %}>Spending</option>
+        </select>
+      </label>
+      <label>
+        Category
+        <select name="category">
+          <option value="">All</option>
+          <optgroup label="Income">
+            {% for category in income_categories %}
+              <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category.replace('_', ' ').title() }}</option>
+            {% endfor %}
+          </optgroup>
+          <optgroup label="Spending">
+            {% for category in spending_categories %}
+              <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category.replace('_', ' ').title() }}</option>
+            {% endfor %}
+          </optgroup>
+        </select>
+      </label>
+    </div>
     <button type="submit">Search</button>
   </form>
 </section>
@@ -43,10 +69,17 @@
 
   <div class="pagination">
     {% if page > 1 %}
-      <a href="{{ url_for('transactions', q=query, page=page-1) }}">Previous</a>
+      <a href="{{ url_for('transactions', q=query, category=selected_category, type=selected_type, page=page-1) }}">Previous</a>
     {% endif %}
+    {% for p in pages %}
+      {% if p %}
+        <a class="{% if p == page %}active{% endif %}" href="{{ url_for('transactions', q=query, category=selected_category, type=selected_type, page=p) }}">{{ p }}</a>
+      {% else %}
+        <span class="ellipsis">…</span>
+      {% endif %}
+    {% endfor %}
     {% if page < total_pages %}
-      <a href="{{ url_for('transactions', q=query, page=page+1) }}">Next</a>
+      <a href="{{ url_for('transactions', q=query, category=selected_category, type=selected_type, page=page+1) }}">Next</a>
     {% endif %}
   </div>
 </section>

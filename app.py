@@ -80,6 +80,28 @@ def currency_filter(value):
         return "0.00"
 
 
+def build_pagination(current_page, total_pages, window=2):
+    if total_pages <= 1:
+        return []
+    pages = []
+    start = max(1, current_page - window)
+    end = min(total_pages, current_page + window)
+
+    if start > 1:
+        pages.append(1)
+        if start > 2:
+            pages.append(None)
+
+    pages.extend(range(start, end + 1))
+
+    if end < total_pages:
+        if end < total_pages - 1:
+            pages.append(None)
+        pages.append(total_pages)
+
+    return pages
+
+
 @app.route("/")
 def index():
     today = datetime.date.today().isoformat()
@@ -209,6 +231,8 @@ def stats():
 @app.route("/transactions")
 def transactions():
     query = (request.args.get("q") or "").strip()
+    category = (request.args.get("category") or "").strip().lower()
+    tx_type = (request.args.get("type") or "").strip().lower()
     page = request.args.get("page", "1")
     try:
         page = max(int(page), 1)
@@ -216,20 +240,36 @@ def transactions():
         page = 1
 
     page_size = 20
-    total = count_transactions(query if query else None)
+    total = count_transactions(
+        query if query else None,
+        category if category else None,
+        tx_type if tx_type else None,
+    )
     total_pages = max((total + page_size - 1) // page_size, 1)
     if page > total_pages:
         page = total_pages
 
-    rows = query_transactions(query if query else None, limit=page_size, offset=(page - 1) * page_size)
+    rows = query_transactions(
+        query if query else None,
+        category if category else None,
+        tx_type if tx_type else None,
+        limit=page_size,
+        offset=(page - 1) * page_size,
+    )
+    pages = build_pagination(page, total_pages)
 
     return render_template(
         "transactions.html",
         rows=rows,
         query=query,
+        selected_category=category,
+        selected_type=tx_type,
         page=page,
         total_pages=total_pages,
         total=total,
+        pages=pages,
+        income_categories=INCOME_CATEGORIES,
+        spending_categories=SPENDING_CATEGORIES,
     )
 
 
