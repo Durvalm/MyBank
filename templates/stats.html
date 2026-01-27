@@ -7,14 +7,21 @@
     <h1>Money at a glance.</h1>
     <p class="subhead">Totals and recent activity pulled straight from your live database.</p>
   </div>
+  <div class="toggle-privacy">
+    <label class="switch">
+      <input type="checkbox" id="show-values-toggle" />
+      <span class="slider"></span>
+    </label>
+    <span>Show values</span>
+  </div>
   <div class="totals">
     <div class="total-card">
       <span>All-time income</span>
-      <strong>${{ all_time.income|currency }}</strong>
+      <strong class="stat-value">${{ all_time.income|currency }}</strong>
     </div>
     <div class="total-card">
       <span>All-time spending</span>
-      <strong>${{ all_time.spending|currency }}</strong>
+      <strong class="stat-value">${{ all_time.spending|currency }}</strong>
     </div>
   </div>
 </section>
@@ -24,8 +31,8 @@
     <div class="period-card">
       <h3>Last {{ item.days // 30 }} months</h3>
       <div class="period-values">
-        <span>Income: ${{ item.totals.income|currency }}</span>
-        <span>Spending: ${{ item.totals.spending|currency }}</span>
+        <span>Income: <strong class="stat-value">${{ item.totals.income|currency }}</strong></span>
+        <span>Spending: <strong class="stat-value">${{ item.totals.spending|currency }}</strong></span>
       </div>
     </div>
   {% endfor %}
@@ -155,6 +162,27 @@
 </div>
 
 <script>
+  const toggle = document.getElementById("show-values-toggle");
+  const root = document.documentElement;
+
+  const applyPrivacy = (isVisible) => {
+    if (isVisible) {
+      root.classList.remove("blur-values");
+    } else {
+      root.classList.add("blur-values");
+    }
+  };
+
+  const saved = localStorage.getItem("mybank-show-values");
+  const initial = saved === null ? false : saved === "true";
+  toggle.checked = initial;
+  applyPrivacy(initial);
+
+  toggle.addEventListener("change", () => {
+    localStorage.setItem("mybank-show-values", toggle.checked);
+    applyPrivacy(toggle.checked);
+  });
+
   const modal = document.getElementById("tx-modal");
   const modalBody = document.getElementById("modal-body");
   const modalTitle = document.getElementById("modal-title");
