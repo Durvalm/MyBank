@@ -17,10 +17,10 @@
     <header class="top-bar">
       <div class="logo">MyBank</div>
       <nav class="nav">
-        <a href="{{ url_for('index') }}">Add</a>
-        <a href="{{ url_for('stats') }}">Stats</a>
-        <a href="{{ url_for('transactions') }}">Transactions</a>
         {% if session.get('user_id') %}
+          <a href="{{ url_for('index') }}">Add</a>
+          <a href="{{ url_for('stats') }}">Stats</a>
+          <a href="{{ url_for('transactions') }}">Transactions</a>
           <a href="{{ url_for('logout') }}">Logout</a>
         {% else %}
           <a href="{{ url_for('login') }}">Login</a>

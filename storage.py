@@ -4,7 +4,7 @@ import sqlite3
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "mybank.db")
+DB_PATH = os.environ.get("MYBANK_DB_PATH", os.path.join(BASE_DIR, "mybank.db"))
 
 INCOME_CATEGORIES = ["work", "financial_aid", "family", "sell", "other"]
 SPENDING_CATEGORIES = [
