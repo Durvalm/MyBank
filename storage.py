@@ -92,6 +92,14 @@ def get_user_by_email(email):
         ).fetchone()
 
 
+def get_user_by_id(user_id):
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT id, email FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+
+
 def authenticate_user(email, password):
     user = get_user_by_email(email)
     if not user:
