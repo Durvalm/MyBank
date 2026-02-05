@@ -94,6 +94,16 @@ def login_required(view):
     return wrapped
 
 
+def api_login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("user_id"):
+            return jsonify({"error": "auth_required"}), 401
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
 def build_pagination(current_page, total_pages, window=2):
     if total_pages <= 1:
         return []
@@ -388,6 +398,62 @@ def transactions_filter():
         for row in rows
     ]
 
+    return jsonify(payload)
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    payload = request.get_json(silent=True) or request.form
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    user = authenticate_user(email, password)
+    if not user:
+        return jsonify({"error": "invalid_credentials"}), 401
+    session["user_id"] = user["id"]
+    session["user_email"] = user["email"]
+    return jsonify({"ok": True, "user": {"id": user["id"], "email": user["email"]}})
+
+
+@app.route("/api/transactions", methods=["GET", "POST"])
+@api_login_required
+def api_transactions():
+    user_id = session["user_id"]
+    if request.method == "POST":
+        payload = request.get_json(silent=True) or request.form
+        tx, error = normalize_transaction(payload)
+        if error:
+            return jsonify({"error": error}), 400
+        insert_transaction(
+            user_id,
+            tx["amount"],
+            tx["type"],
+            tx["category"],
+            tx["description"],
+            tx["date"],
+        )
+        return jsonify({"ok": True, "transaction": tx}), 201
+
+    try:
+        limit = max(int(request.args.get("limit", "200")), 1)
+    except ValueError:
+        limit = 200
+    try:
+        offset = max(int(request.args.get("offset", "0")), 0)
+    except ValueError:
+        offset = 0
+
+    rows = query_transactions(user_id, limit=limit, offset=offset)
+    payload = [
+        {
+            "id": row["id"],
+            "amount": row["amount"],
+            "type": row["type"],
+            "category": row["category"],
+            "description": row["description"],
+            "date": row["date"],
+        }
+        for row in rows
+    ]
     return jsonify(payload)
 
 

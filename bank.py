@@ -5,8 +5,9 @@ from storage import INCOME_CATEGORIES, SPENDING_CATEGORIES, init_db, insert_tran
 
 class Money:
 
-    def __init__(self, user_id):
+    def __init__(self, user_id, api_client=None):
         self.user_id = user_id
+        self.api_client = api_client
         self.introduce()
         self.amount = self.get_amount()
         if self.amount is None:
@@ -28,16 +29,19 @@ class Money:
     def add(self):
         if not self.option and self.amount:
             return None
-        init_db()
         payload = self.to_payload()
-        insert_transaction(
-            self.user_id,
-            payload["amount"],
-            payload["type"],
-            payload["category"],
-            payload["description"],
-            payload["date"],
-        )
+        if self.api_client:
+            self.api_client.add_transaction(payload)
+        else:
+            init_db()
+            insert_transaction(
+                self.user_id,
+                payload["amount"],
+                payload["type"],
+                payload["category"],
+                payload["description"],
+                payload["date"],
+            )
         print(f"{self.amount} added as {self.category} {self.option} in {self.date}")
     
     def to_payload(self):

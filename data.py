@@ -3,8 +3,9 @@ from datetime import datetime
 from storage import get_db, init_db
 
 class RetrieveData:
-    def __init__(self, user_id):
+    def __init__(self, user_id, api_client=None):
         self.user_id = user_id
+        self.api_client = api_client
 
     def run(self):
         print("\nWhat do you wanna see?")
@@ -25,6 +26,12 @@ class RetrieveData:
         selected_method()
 
     def get_data(self):
+        if self.api_client:
+            rows = self.api_client.list_all_transactions()
+            def sort_key(row):
+                return (row.get("date") or "", row.get("id") or 0)
+            rows.sort(key=sort_key)
+            return rows
         init_db()
         with get_db() as conn:
             rows = conn.execute(
