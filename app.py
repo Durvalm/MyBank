@@ -129,12 +129,10 @@ def build_pagination(current_page, total_pages, window=2):
 @app.route("/")
 @login_required
 def index():
-    today = datetime.date.today().isoformat()
     return render_template(
         "index.html",
         income_categories=INCOME_CATEGORIES,
         spending_categories=SPENDING_CATEGORIES,
-        today=today,
     )
 
 
@@ -181,7 +179,8 @@ def totals_for_period(conn, user_id, start_date):
 @login_required
 def stats():
     user_id = session["user_id"]
-    month_param = request.args.get("month")
+    month_param = (request.args.get("month") or "").strip()
+    year_param = (request.args.get("year") or "").strip()
     with get_db() as conn:
         all_time = totals_for_period(conn, user_id, "0000-01-01")
 
@@ -201,9 +200,12 @@ def stats():
             """
         , (user_id,)).fetchall()
 
-        month_rows = conn.execute(
+        monthly_rows = conn.execute(
             """
-            SELECT strftime('%Y-%m', date) AS month
+            SELECT
+                strftime('%Y-%m', date) AS month,
+                COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income_total,
+                COALESCE(SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END), 0) AS spending_total
             FROM transactions
             WHERE user_id = ?
             GROUP BY month
@@ -211,11 +213,68 @@ def stats():
             """
         , (user_id,)).fetchall()
 
-        available_months = [row["month"] for row in month_rows]
+        monthly_summary_all = []
+        available_years = []
+        known_years = set()
+        for row in monthly_rows:
+            month = row["month"]
+            year = month.split("-")[0]
+            income_total = round(row["income_total"], 2)
+            spending_total = round(row["spending_total"], 2)
+            if year not in known_years:
+                known_years.add(year)
+                available_years.append(year)
+            monthly_summary_all.append(
+                {
+                    "month": month,
+                    "year": year,
+                    "income": income_total,
+                    "spending": spending_total,
+                    "net": round(income_total - spending_total, 2),
+                }
+            )
+
+        if year_param in available_years:
+            selected_year = year_param
+        elif month_param[:4] in available_years:
+            selected_year = month_param[:4]
+        elif available_years:
+            selected_year = available_years[0]
+        else:
+            selected_year = datetime.date.today().strftime("%Y")
+
+        monthly_summary = [
+            {
+                "month": item["month"],
+                "income": item["income"],
+                "spending": item["spending"],
+                "net": item["net"],
+            }
+            for item in monthly_summary_all
+            if item["year"] == selected_year
+        ]
+        available_months = [item["month"] for item in monthly_summary]
+
         if month_param in available_months:
             selected_month = month_param
         else:
             selected_month = available_months[0] if available_months else datetime.date.today().strftime("%Y-%m")
+
+        yearly_totals_rows = conn.execute(
+            """
+            SELECT type, COALESCE(SUM(amount), 0) AS total
+            FROM transactions
+            WHERE strftime('%Y', date) = ? AND user_id = ?
+            GROUP BY type
+            """,
+            (selected_year, user_id),
+        ).fetchall()
+        selected_year_totals = {"income": 0, "spending": 0, "net": 0}
+        for row in yearly_totals_rows:
+            selected_year_totals[row["type"]] = round(row["total"], 2)
+        selected_year_totals["net"] = round(
+            selected_year_totals["income"] - selected_year_totals["spending"], 2
+        )
 
         monthly_totals = conn.execute(
             """
@@ -253,8 +312,12 @@ def stats():
         all_time=all_time,
         periods=periods,
         recent=recent,
+        available_years=available_years,
+        selected_year=selected_year,
+        selected_year_totals=selected_year_totals,
         available_months=available_months,
         selected_month=selected_month,
+        monthly_summary=monthly_summary,
         monthly_by_type=monthly_by_type,
         category_breakdown=category_breakdown,
     )

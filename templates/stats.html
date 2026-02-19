@@ -45,6 +45,7 @@
       <p class="muted">Income, spending, and category totals for a selected month.</p>
     </div>
     <form method="get" action="{{ url_for('stats') }}" class="month-picker">
+      <input type="hidden" name="year" value="{{ selected_year }}" />
       <label>
         Month
         <select name="month" onchange="this.form.submit()">
@@ -120,6 +121,63 @@
     </div>
   {% else %}
     <p class="muted">No monthly data yet.</p>
+  {% endif %}
+</section>
+
+<section class="month-history">
+  <div class="section-header">
+    <div>
+      <h2>Months in {{ selected_year }}</h2>
+      <p class="muted">Income and spending totals for the selected year.</p>
+    </div>
+    {% if available_years %}
+      <div class="year-filter">
+        {% for year in available_years %}
+          <a
+            href="{{ url_for('stats', year=year) }}"
+            class="year-button {% if year == selected_year %}active{% endif %}"
+          >
+            {{ year }}
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="totals yearly-totals">
+    <div class="total-card">
+      <span>{{ selected_year }} income</span>
+      <strong>${{ selected_year_totals.income|currency }}</strong>
+    </div>
+    <div class="total-card">
+      <span>{{ selected_year }} spending</span>
+      <strong>${{ selected_year_totals.spending|currency }}</strong>
+    </div>
+    <div class="total-card">
+      <span>{{ selected_year }} net</span>
+      <strong class="{% if selected_year_totals.net < 0 %}negative{% endif %}">
+        ${{ selected_year_totals.net|currency }}
+      </strong>
+    </div>
+  </div>
+
+  {% if monthly_summary %}
+    <div class="month-history-list">
+      {% for item in monthly_summary %}
+        <div class="month-history-row">
+          <div class="month-history-month">{{ item.month }}</div>
+          <div class="month-history-values">
+            <span>Income: <strong>${{ item.income|currency }}</strong></span>
+            <span>Spending: <strong>${{ item.spending|currency }}</strong></span>
+            <span class="{% if item.net < 0 %}negative{% endif %}">
+              Net: <strong>${{ item.net|currency }}</strong>
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No month summaries yet.</p>
   {% endif %}
 </section>
 
