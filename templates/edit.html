@@ -27,18 +27,7 @@
 
       <label>
         Category
-        <select name="category" required>
-          <optgroup label="Income">
-            {% for category in income_categories %}
-              <option value="{{ category }}" {% if tx.category == category %}selected{% endif %}>{{ category.replace('_', ' ').title() }}</option>
-            {% endfor %}
-          </optgroup>
-          <optgroup label="Spending">
-            {% for category in spending_categories %}
-              <option value="{{ category }}" {% if tx.category == category %}selected{% endif %}>{{ category.replace('_', ' ').title() }}</option>
-            {% endfor %}
-          </optgroup>
-        </select>
+        <select name="category" data-current-category="{{ tx.category }}" required></select>
       </label>
 
       <label>
@@ -55,4 +44,49 @@
     </form>
   </div>
 </section>
+
+<script>
+  const categoryChoices = {
+    income: {{ income_categories|tojson }},
+    spending: {{ spending_categories|tojson }},
+  };
+
+  const formatCategory = (category) => {
+    return category
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const syncCategoryOptions = (form) => {
+    const categorySelect = form.querySelector("select[name='category']");
+    const selectedType = form.querySelector("input[name='type']:checked")?.value;
+    const currentValue = categorySelect.dataset.currentCategory || categorySelect.value;
+    categorySelect.innerHTML = "";
+
+    if (!selectedType) {
+      categorySelect.disabled = true;
+      categorySelect.add(new Option("Choose a type first", ""));
+      return;
+    }
+
+    categorySelect.disabled = false;
+    categorySelect.add(new Option("Choose a category", ""));
+    categoryChoices[selectedType].forEach((category) => {
+      categorySelect.add(new Option(formatCategory(category), category));
+    });
+
+    if (categoryChoices[selectedType].includes(currentValue)) {
+      categorySelect.value = currentValue;
+    }
+    categorySelect.dataset.currentCategory = "";
+  };
+
+  document.querySelectorAll(".form").forEach((form) => {
+    form.querySelectorAll("input[name='type']").forEach((input) => {
+      input.addEventListener("change", () => syncCategoryOptions(form));
+    });
+    syncCategoryOptions(form);
+  });
+</script>
 {% endblock %}

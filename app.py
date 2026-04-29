@@ -10,13 +10,20 @@ from storage import (
     authenticate_user,
     count_transactions,
     create_user,
+    delete_recurring_expense,
     delete_transaction,
+    fetch_recurring_expense,
     fetch_transaction,
     get_user_by_email,
     get_db,
     init_db,
+    insert_recurring_expense,
     insert_transaction,
+    list_recurring_expenses,
+    process_due_recurring_expenses,
     query_transactions,
+    set_recurring_expense_active,
+    update_recurring_expense,
     update_transaction,
 )
 
@@ -31,6 +38,8 @@ def setup_db_once():
     if not _db_initialized:
         init_db()
         _db_initialized = True
+    if session.get("user_id"):
+        process_due_recurring_expenses(session["user_id"])
 
 
 def valid_category(tx_type, category):
@@ -73,6 +82,45 @@ def normalize_transaction(form):
         "category": category,
         "description": description,
         "date": date,
+    }, None
+
+
+def normalize_recurring_expense(form):
+    amount = parse_amount(form.get("amount"))
+    category = (form.get("category") or "").lower()
+    description = form.get("description") or ""
+    start_date = form.get("start_date") or datetime.date.today().isoformat()
+    active = 1 if form.get("active", "1") == "1" else 0
+
+    try:
+        billing_day = int(form.get("billing_day") or "")
+    except ValueError:
+        billing_day = None
+
+    if amount is None or amount <= 0:
+        return None, "Amount must be a positive number."
+
+    if not valid_category("spending", category):
+        return None, "Please pick a valid spending category."
+
+    if billing_day is None or billing_day < 1 or billing_day > 31:
+        return None, "Billing day must be between 1 and 31."
+
+    try:
+        datetime.date.fromisoformat(start_date)
+    except ValueError:
+        return None, "Start date must be a valid date."
+
+    if not description.strip():
+        description = "(no description)"
+
+    return {
+        "amount": amount,
+        "category": category,
+        "description": description,
+        "billing_day": billing_day,
+        "start_date": start_date,
+        "active": active,
     }, None
 
 
@@ -414,6 +462,90 @@ def remove_transaction(tx_id):
     delete_transaction(tx_id, user_id)
     flash("Transaction deleted.")
     return redirect(url_for("transactions"))
+
+
+@app.route("/recurring")
+@login_required
+def recurring_expenses():
+    user_id = session["user_id"]
+    rows = list_recurring_expenses(user_id)
+    return render_template(
+        "recurring.html",
+        rows=rows,
+        spending_categories=SPENDING_CATEGORIES,
+    )
+
+
+@app.route("/recurring/add", methods=["POST"])
+@login_required
+def add_recurring_expense():
+    payload, error = normalize_recurring_expense(request.form)
+    if error:
+        flash(error)
+        return redirect(url_for("recurring_expenses"))
+
+    insert_recurring_expense(
+        session["user_id"],
+        payload["amount"],
+        payload["category"],
+        payload["description"],
+        payload["billing_day"],
+        payload["start_date"],
+        payload["active"],
+    )
+    flash("Recurring expense added.")
+    return redirect(url_for("recurring_expenses"))
+
+
+@app.route("/recurring/<int:recurring_id>/edit", methods=["POST"])
+@login_required
+def edit_recurring_expense(recurring_id):
+    user_id = session["user_id"]
+    if not fetch_recurring_expense(recurring_id, user_id):
+        flash("Recurring expense not found.")
+        return redirect(url_for("recurring_expenses"))
+
+    payload, error = normalize_recurring_expense(request.form)
+    if error:
+        flash(error)
+        return redirect(url_for("recurring_expenses"))
+
+    update_recurring_expense(
+        recurring_id,
+        user_id,
+        payload["amount"],
+        payload["category"],
+        payload["description"],
+        payload["billing_day"],
+        payload["start_date"],
+        payload["active"],
+    )
+    flash("Recurring expense updated.")
+    return redirect(url_for("recurring_expenses"))
+
+
+@app.route("/recurring/<int:recurring_id>/cancel", methods=["POST"])
+@login_required
+def cancel_recurring_expense(recurring_id):
+    set_recurring_expense_active(recurring_id, session["user_id"], 0)
+    flash("Recurring expense canceled.")
+    return redirect(url_for("recurring_expenses"))
+
+
+@app.route("/recurring/<int:recurring_id>/resume", methods=["POST"])
+@login_required
+def resume_recurring_expense(recurring_id):
+    set_recurring_expense_active(recurring_id, session["user_id"], 1)
+    flash("Recurring expense resumed.")
+    return redirect(url_for("recurring_expenses"))
+
+
+@app.route("/recurring/<int:recurring_id>/delete", methods=["POST"])
+@login_required
+def remove_recurring_expense(recurring_id):
+    delete_recurring_expense(recurring_id, session["user_id"])
+    flash("Recurring expense deleted.")
+    return redirect(url_for("recurring_expenses"))
 
 
 @app.route("/transactions/filter")

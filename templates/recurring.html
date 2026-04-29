@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="transactions-header">
+  <div>
+    <p class="eyebrow">Recurring</p>
+    <h1>Manage monthly expenses.</h1>
+    <p class="subhead">Create subscriptions and bills that post automatically each month.</p>
+  </div>
+  <form class="search-form" action="{{ url_for('add_recurring_expense') }}" method="post">
+    <label>
+      Amount
+      <input type="number" name="amount" step="0.01" min="0" placeholder="0.00" required />
+    </label>
+
+    <label>
+      Category
+      <select name="category" required>
+        {% for category in spending_categories %}
+          <option value="{{ category }}">{{ category.replace('_', ' ').title() }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Description
+      <input type="text" name="description" placeholder="Netflix, rent, phone..." />
+    </label>
+
+    <div class="filters">
+      <label>
+        Billing day
+        <input type="number" name="billing_day" min="1" max="31" value="1" required />
+      </label>
+      <label>
+        Start date
+        <input type="date" name="start_date" data-local-date="true" required />
+      </label>
+    </div>
+
+    <input type="hidden" name="active" value="1" />
+    <button type="submit">Add Recurring Expense</button>
+  </form>
+</section>
+
+<section class="transactions-list">
+  <div class="list-header">
+    <span>{{ rows|length }} recurring item{% if rows|length != 1 %}s{% endif %}</span>
+    <span class="muted">Monthly spending only</span>
+  </div>
+
+  {% for row in rows %}
+    <div class="transaction-row">
+      <div>
+        <span class="tag {% if row.active %}active{% else %}canceled{% endif %}">
+          {% if row.active %}Active{% else %}Canceled{% endif %}
+        </span>
+        <strong>${{ row.amount|currency }}</strong>
+        <span class="muted">{{ row.category.replace('_', ' ').title() }}</span>
+      </div>
+      <div class="muted">{{ row.description }}</div>
+      <div class="transaction-meta">
+        <span class="date">
+          Day {{ row.billing_day }} from {{ row.start_date }}
+          {% if row.last_charged_date %} - last charged {{ row.last_charged_date }}{% endif %}
+        </span>
+        <div class="actions">
+          <button
+            type="button"
+            class="button-link edit-recurring-button"
+            data-id="{{ row.id }}"
+            data-amount="{{ row.amount }}"
+            data-category="{{ row.category }}"
+            data-description="{{ row.description }}"
+            data-billing-day="{{ row.billing_day }}"
+            data-start-date="{{ row.start_date }}"
+            data-active="{{ row.active }}"
+          >
+            Edit
+          </button>
+          {% if row.active %}
+            <form method="post" action="{{ url_for('cancel_recurring_expense', recurring_id=row.id) }}">
+              <button type="submit" class="button-link">Cancel</button>
+            </form>
+          {% else %}
+            <form method="post" action="{{ url_for('resume_recurring_expense', recurring_id=row.id) }}">
+              <button type="submit" class="button-link">Resume</button>
+            </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('remove_recurring_expense', recurring_id=row.id) }}" onsubmit="return confirm('Delete this recurring expense? Existing transactions stay in your history.');">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No recurring expenses yet.</p>
+  {% endfor %}
+</section>
+
+<div class="modal" id="recurring-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="true"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3>Edit recurring expense</h3>
+        <p class="muted">Changes apply to future automatic charges.</p>
+      </div>
+      <button type="button" class="close" data-close="true">Close</button>
+    </div>
+    <div class="modal-body">
+      <form class="form" id="recurring-form" method="post">
+        <label>
+          Amount
+          <input type="number" name="amount" step="0.01" min="0" required />
+        </label>
+
+        <label>
+          Category
+          <select name="category" required>
+            {% for category in spending_categories %}
+              <option value="{{ category }}">{{ category.replace('_', ' ').title() }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label>
+          Description
+          <input type="text" name="description" />
+        </label>
+
+        <div class="filters">
+          <label>
+            Billing day
+            <input type="number" name="billing_day" min="1" max="31" required />
+          </label>
+          <label>
+            Start date
+            <input type="date" name="start_date" required />
+          </label>
+        </div>
+
+        <label>
+          Status
+          <select name="active" required>
+            <option value="1">Active</option>
+            <option value="0">Canceled</option>
+          </select>
+        </label>
+
+        <button type="submit">Save Changes</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const recurringModal = document.getElementById("recurring-modal");
+  const recurringForm = document.getElementById("recurring-form");
+
+  document.querySelectorAll("input[type='date'][data-local-date='true']").forEach((input) => {
+    if (input.value) return;
+    const now = new Date();
+    const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 10);
+    input.value = localDate;
+  });
+
+  const openRecurringModal = (button) => {
+    recurringForm.action = `/recurring/${button.dataset.id}/edit`;
+    recurringForm.amount.value = button.dataset.amount;
+    recurringForm.category.value = button.dataset.category;
+    recurringForm.description.value = button.dataset.description || "";
+    recurringForm.billing_day.value = button.dataset.billingDay;
+    recurringForm.start_date.value = button.dataset.startDate;
+    recurringForm.active.value = button.dataset.active;
+
+    recurringModal.classList.add("open");
+    recurringModal.setAttribute("aria-hidden", "false");
+  };
+
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest(".edit-recurring-button");
+    if (target) {
+      event.preventDefault();
+      openRecurringModal(target);
+      return;
+    }
+
+    if (event.target.dataset.close === "true") {
+      recurringModal.classList.remove("open");
+      recurringModal.setAttribute("aria-hidden", "true");
+    }
+  });
+</script>
+{% endblock %}

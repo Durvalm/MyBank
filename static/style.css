@@ -620,6 +620,16 @@ button.danger {
   color: #a23434;
 }
 
+.tag.active {
+  background: #d5f5e3;
+  color: #1e7a47;
+}
+
+.tag.canceled {
+  background: #f1e8dd;
+  color: #7c5b42;
+}
+
 .muted {
   color: var(--muted);
 }
